@@ -133,6 +133,51 @@ details.leg>summary{font-size:13px;color:var(--muted);justify-content:flex-start
 .th input{width:70px;font:inherit;font-size:14px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg)}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
+.tabc{display:flex;flex-direction:column;gap:14px}
+.tabc[hidden]{display:none}
+.tabs{align-self:flex-start}
+.h-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.h-head h2{margin:0}
+.h-load{color:var(--muted)}
+.h-cal{display:flex;flex-direction:column;gap:2px}
+.h-row{display:grid;grid-template-columns:34px repeat(31,minmax(0,1fr));gap:2px;align-items:center}
+.h-m{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.h-c{aspect-ratio:1;padding:0;border:0;border-radius:2px;font-size:9px;line-height:1;color:var(--fg);display:flex;align-items:center;justify-content:center;min-width:0;cursor:pointer}
+.h-c.go{background:var(--go-bg)} .h-c.warn{background:var(--warn-bg)} .h-c.no{background:var(--no-bg)} .h-c.none{background:var(--line);opacity:.35}
+.h-c.empty{background:none;cursor:default}
+.h-c.fc{outline:1px dashed var(--muted);outline-offset:-1px}
+.h-c.sel{outline:2px solid var(--fg);outline-offset:0}
+.dot{font-size:inherit;color:var(--muted)} .dot.go{color:var(--go)} .dot.warn{color:var(--warn)} .dot.no{color:var(--no)}
+.h-legend,.h-small,.h-note{font-size:12px;color:var(--muted);margin:8px 0 0}
+.h-note a{color:var(--muted)}
+.h-legend .sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin:0 3px 0 8px}
+.h-legend .sw.go{background:var(--go-bg)} .h-legend .sw.warn{background:var(--warn-bg)} .h-legend .sw.no{background:var(--no-bg)}
+.h-title{font-size:16px;text-transform:none;letter-spacing:0;color:var(--fg)}
+.h-badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:6px}
+.h-badge.go{background:var(--go-bg);color:var(--go)} .h-badge.warn{background:var(--warn-bg);color:var(--warn)} .h-badge.no{background:var(--no-bg);color:var(--no)}
+.h-score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.h-score div{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.h-score b{font-size:24px;font-weight:800}
+.h-score small{font-size:12px;color:var(--muted)}
+.h-metrics{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+.h-metrics .hum,.h-before .hum{color:var(--warn)}
+#tab-histo h3{font-size:14px;margin:12px 0 6px}
+.h-scroll{overflow-x:auto}
+.h-before{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;width:100%;max-width:560px}
+.h-before th,.h-before td{padding:3px 5px;text-align:center;border-bottom:1px solid var(--line);font-family:var(--f-mono)}
+.h-before tbody th{text-align:left;font-family:var(--f-body);font-weight:600;white-space:nowrap}
+.h-read{font-size:14px;margin:6px 0;max-width:70ch}
+.h-read.warn{color:var(--warn)} .h-read.go{color:var(--go)}
+.h-evs{margin:0;padding-left:18px;font-size:14px;line-height:1.5}
+.h-evs li{margin-bottom:8px}
+.h-evs a{color:var(--fg)}
+.h-evs small{display:block;font-size:12px;color:var(--muted)}
+.h-ev{font-size:12px;font-weight:600}
+.h-ev.go{color:var(--go)} .h-ev.warn{color:var(--warn)} .h-ev.no{color:var(--no)}
+.h-an{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.h-an-c{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;font-size:13px}
+.h-an-d{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+@media (max-width:599px){.h-row{grid-template-columns:26px repeat(31,minmax(0,1fr));gap:1px}.h-c{font-size:7px}.h-score b{font-size:20px}}
 .day small.cov{font-family:var(--f-body);font-style:italic;white-space:normal}
 @media (max-width:599px){.why{overflow-x:auto}.why table{font-size:12px}.why th,.why td{padding:4px 4px}.why td{white-space:normal}.why tbody th{font-size:12px}}
 @media (max-width:599px){.controls{flex-wrap:wrap}.controls select{flex:1 1 100%}.controls .seg{flex:1}.controls .seg button{flex:1}}
@@ -150,7 +195,13 @@ details.leg>summary{font-size:13px;color:var(--muted);justify-content:flex-start
       <div class="seg" role="group" aria-label="Modèle" id="models"></div>
       <button id="refresh" aria-label="Actualiser">↻<span class="lbl"> Actualiser</span></button>
     </div>
+    <nav class="tabs seg" role="tablist" aria-label="Vue">
+      <button role="tab" id="t-prev" aria-selected="true" aria-pressed="true">Prévisions</button>
+      <button role="tab" id="t-histo" aria-selected="false" aria-pressed="false">Historique</button>
+    </nav>
   </header>
+
+  <div id="tab-prev" class="tabc">
 
   <section class="panel">
     <h2 id="days-h">Verdict par jour</h2>
@@ -276,6 +327,8 @@ details.leg>summary{font-size:13px;color:var(--muted);justify-content:flex-start
   </section>
 
   <p class="meta">Données : Open‑Meteo (Météo-France AROME/ARPEGE, DWD ICON, ECMWF IFS 0.25°). Dernière prévision gardée hors ligne.</p>
+  </div>
+  <div id="tab-histo" class="tabc" hidden></div>
 </div>
 
 <script>
@@ -290,10 +343,10 @@ const SPOTS=[
   {id:"midi",region:"chamonix",name:"Aiguille du Midi",alt:3842,lat:45.8786,lon:6.8874,lvl:600},
   {id:"verte",region:"chamonix",name:"Aiguille Verte",alt:4122,lat:45.9347,lon:6.9694,lvl:600},
   {id:"brevent",region:"chamonix",name:"Brévent / Aiguilles Rouges",alt:2525,lat:45.9342,lon:6.8369,lvl:700},
-  {id:"chamonix",region:"chamonix",name:"Chamonix (vallée)",alt:1035,lat:45.9237,lon:6.8694,lvl:850},
+  {id:"chamonix",region:"chamonix",name:"Chamonix (vallée)",alt:1035,lat:45.9237,lon:6.8694,lvl:850,valley:true},
   {id:"percee",region:"aravis",name:"Pointe Percée",alt:2750,lat:45.9553,lon:6.5556,lvl:700},
   {id:"charvin",region:"aravis",name:"Mont Charvin",alt:2409,lat:45.8431,lon:6.4478,lvl:700},
-  {id:"clusaz",region:"aravis",name:"La Clusaz (vallée)",alt:1040,lat:45.9047,lon:6.4239,lvl:850},
+  {id:"clusaz",region:"aravis",name:"La Clusaz (vallée)",alt:1040,lat:45.9047,lon:6.4239,lvl:850,valley:true},
   {id:"tournette",region:"bornes",name:"La Tournette",alt:2351,lat:45.8269,lon:6.2861,lvl:700},
   {id:"jallouvre",region:"bornes",name:"Pic de Jallouvre",alt:2408,lat:45.9989,lon:6.4606,lvl:700},
   {id:"parmelan",region:"bornes",name:"Parmelan",alt:1832,lat:45.9253,lon:6.2919,lvl:850},
@@ -604,7 +657,7 @@ function drawWhy(k,set){
   const warn=[];
   // Temperatures are given at the summit altitude here (fine Alpine models), so saturation means the summit sits in cloud or fog
   const fog=av.filter(d=>d.sat>=1);if(fog.length)warn.push(`Sommet probablement dans les nuages ou la brume (${fog.map(d=>LBL_M(d.m)+" "+d.sat+" h").join(", ")} entre 8h et 18h) : visibilité réduite, givre possible.`);
-  const nr=av.filter(d=>d.izNight!=null&&d.izNight>sp.alt);if(sp.alt>1800&&nr.length)warn.push(`Pas de regel la nuit au niveau du sommet (iso 0° la nuit vers ${f(nr[0].izNight)} m) : neige molle, ponts de neige fragiles, chutes de pierres.`);
+  const nr=av.filter(d=>d.izNight!=null&&d.izNight>sp.alt),snowy=sp.alt>=3000||[11,12,1,2,3,4,5].includes(+k.slice(5,7));if(sp.alt>1800&&snowy&&nr.length)warn.push(`Pas de regel la nuit au niveau du sommet (iso 0° la nuit vers ${f(nr[0].izNight)} m) : neige molle, ponts de neige fragiles, chutes de pierres.`);
   if(av.length===1)warn.push(`Seul ${MODELS[av[0].m].long} va jusqu'à ce jour : prévision à confirmer.`);
   box.innerHTML=`<h3>${JOURS[dt.getUTCDay()]} ${dt.getUTCDate()}/${dt.getUTCMonth()+1} : <span style="color:var(--${CLS[v]})">${LBL[v]}</span> <small style="color:var(--muted);font-weight:400">${sp.name}, ${sp.alt} m</small></h3>
   <p>${txt}</p>${warn.length?`<p class="warn">⚠ ${warn.join(" ")}</p>`:""}
@@ -646,7 +699,7 @@ function render(suffix){
 for(const r in REGIONS){const g=document.createElement("optgroup");g.label=REGIONS[r].name;
   SPOTS.filter(s=>s.region===r).forEach(s=>{const o=document.createElement("option");o.value=s.id;o.textContent=`${s.name} (${s.alt} m)`;g.appendChild(o)});$("spot").appendChild(g)}
 $("spot").value=S.spot;
-$("spot").onchange=e=>{S.spot=e.target.value;S.data=null;S.sel=null;savePrefs();load()};
+$("spot").onchange=e=>{S.spot=e.target.value;S.data=null;S.sel=null;savePrefs();load();if(H)H.then(h=>h&&h.reload())};
 MK.forEach(m=>{const b=document.createElement("button");b.dataset.m=m;b.textContent=LBL_M(m);b.title=MODELS[m].long;b.onclick=()=>{S.model=m;savePrefs();render()};$("models").appendChild(b)});
 $("refresh").onclick=()=>{load(true);loadSyn(true)};
 $("windy-d").ontoggle=e=>{const b=$("windy-box");if(e.target.open&&!b.firstChild){const sp=spot();b.innerHTML=`<iframe loading="lazy" title="Windy pression" src="https://embed.windy.com/embed2.html?lat=46&lon=6.8&detailLat=${sp.lat}&detailLon=${sp.lon}&zoom=5&level=surface&overlay=pressure&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=true&type=map&metricWind=km%2Fh&metricTemp=%C2%B0C"></iframe>`}};
@@ -654,7 +707,17 @@ const PHONE=matchMedia("(max-width:599px)").matches;
 document.querySelectorAll("details.fold").forEach(d=>{d.open=!PHONE;d.addEventListener("toggle",()=>{if(d.open)render()})});
 document.addEventListener("pointerdown",e=>{if(!e.target.closest("svg"))$("tip").style.display="none"});
 $("syn-t").oninput=e=>drawSyn(+e.target.value);
-[["t-ok","ok"],["t-max","max"],["t-cape","cape"]].forEach(([id,k])=>{$(id).value=S.th[k];$(id).onchange=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.th[k]=v;savePrefs();render()}}});
+// ---------- tabs: Prévisions / Historique (module loaded on first open) ----------
+let H=null,histo=false;
+function setTab(on){
+  histo=on;$("tab-prev").hidden=on;$("tab-histo").hidden=!on;
+  [["t-prev",!on],["t-histo",on]].forEach(([id,v])=>{$(id).setAttribute("aria-selected",v);$(id).setAttribute("aria-pressed",v)});
+  if(on&&!H){H=import("./historique.js").then(m=>m.mount($("tab-histo"),{spot,th:()=>S.th,models:MK,modelId:m=>MODELS[m].id,lbl:LBL_M,isValley:sp=>!!sp.valley}))
+    .catch(e=>{$("tab-histo").innerHTML='<p class="err">Historique indisponible ('+(e&&e.message||e)+').</p>';H=null})}
+  if(!on)render();
+}
+$("t-prev").onclick=()=>setTab(false);$("t-histo").onclick=()=>setTab(true);
+[["t-ok","ok"],["t-max","max"],["t-cape","cape"]].forEach(([id,k])=>{$(id).value=S.th[k];$(id).onchange=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.th[k]=v;savePrefs();render();if(H)H.then(h=>h&&h.refresh())}}});
 let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>render(),150)});
 load();loadSyn();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});

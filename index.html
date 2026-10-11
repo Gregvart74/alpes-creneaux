@@ -11,6 +11,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: mobile-first single column — controls, 10-day verdicts, day analysis, charts, synoptic map, guide */
@@ -133,6 +134,22 @@ details.leg>summary{font-size:13px;color:var(--muted);justify-content:flex-start
 .th input{width:70px;font:inherit;font-size:14px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg)}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
+.v3-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.v3-when{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.v3-box{position:relative;height:480px;border-radius:8px;overflow:hidden;background:#0f161c}
+.v3-box canvas{display:block}
+.v3-msg{position:absolute;inset:0;display:grid;place-items:center;color:#93a3ae;font-size:14px;text-align:center;padding:20px}
+.v3-hud{position:absolute;left:8px;top:8px;z-index:2;background:#0f161cc4;color:#e4eaee;font-family:var(--f-mono);font-size:11.5px;line-height:1.5;  padding:6px 9px;border-radius:7px;pointer-events:none;display:none}
+.v3-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.v3-lbl{position:absolute;font-size:11.5px;font-weight:600;color:#fff;text-shadow:0 1px 3px #000c;transform:translate(-50%,-130%);white-space:nowrap}
+.v3-lbl::after{content:"";position:absolute;left:50%;top:100%;width:1px;height:10px;background:#fffa}
+.v3-lbl.v{font-weight:400;color:#fffc}
+.v3-ctl{display:flex;align-items:center;gap:10px;margin-top:8px}
+.v3-ctl button{width:38px;padding:6px 0}
+.v3-ctl input{flex:1;accent-color:var(--fg)}
+.v3-ctl span{font-family:var(--f-mono);font-size:13px;min-width:3em;text-align:right}
+.v3-note{font-size:11px;color:var(--muted);margin:6px 0 0}
+@media (max-width:599px){.v3-box{height:56vh;min-height:300px}.v3-hud{font-size:10px;padding:4px 7px;line-height:1.4}}
 .tabc{display:flex;flex-direction:column;gap:14px}
 .tabc[hidden]{display:none}
 .tabs{align-self:flex-start}
@@ -207,6 +224,13 @@ details.leg>summary{font-size:13px;color:var(--muted);justify-content:flex-start
     <h2 id="days-h">Verdict par jour</h2>
     <div class="days" id="days"></div>
     <p class="days-note">Touchez un jour pour voir le détail. Verdict = le plus prudent des modèles disponibles ce jour-là.</p>
+  </section>
+
+  <section class="panel v3" id="v3" hidden>
+    <div class="v3-head"><h2>Vue 3D du massif du Mont-Blanc</h2><span class="v3-when" id="v3-when"></span></div>
+    <div class="v3-box" id="v3-box"><div class="v3-msg" id="v3-msg">Chargement de la vue 3D…</div><div class="v3-hud" id="v3-hud"></div></div>
+    <div class="v3-ctl"><button id="v3-play" aria-label="Lecture">▶</button><input id="v3-h" type="range" min="0" max="23" step="1" value="14" aria-label="Heure de la vue 3D"><span id="v3-hl">14h</span></div>
+    <p class="v3-note">Illustration de la prévision au point choisi, pas une simulation face par face. Glisser pour tourner, pincer ou molette pour zoomer. Relief Copernicus GLO-30 · image Sentinel-2 cloudless 2023 par EOX (CC BY-NC-SA 4.0).</p>
   </section>
 
   <section class="panel"><div class="why" id="why"></div></section>
@@ -312,12 +336,15 @@ details.leg>summary{font-size:13px;color:var(--muted);justify-content:flex-start
         <div>
           <h3>Seuils</h3>
           <div class="th">
-            <label for="t-ok">Vent sommet confort ≤</label><input id="t-ok" type="number" inputmode="numeric" value="40">
-            <label for="t-max">Vent sommet max ≤</label><input id="t-max" type="number" inputmode="numeric" value="60">
-            <label for="t-cape">Orage : CAPE limite ≥</label><input id="t-cape" type="number" inputmode="numeric" value="1000">
+            <label for="t-ok">Vent sommet confort ≤</label><input id="t-ok" type="number" inputmode="numeric" value="60">
+            <label for="t-max">Vent sommet max ≤</label><input id="t-max" type="number" inputmode="numeric" value="80">
+            <label for="t-cape">Orage : CAPE limite ≥ (non ≥ 2×)</label><input id="t-cape" type="number" inputmode="numeric" value="1500">
+            <label for="t-rain1">Précip. limite ≥ (mm)</label><input id="t-rain1" type="number" inputmode="decimal" value="1">
+            <label for="t-rain2">Précip. non ≥ (mm)</label><input id="t-rain2" type="number" inputmode="decimal" value="5">
+            <label for="t-cloud">Nuages moyens limite ≥ (%)</label><input id="t-cloud" type="number" inputmode="numeric" value="60">
           </div>
         </div>
-        <div><h3>Vent</h3><p>Le vent est lu au niveau de pression le plus proche du sommet : 600 hPa (~4200 m) pour le massif du Mont-Blanc, 700 hPa (~3000 m) pour les sommets des Aravis, des Bornes et des Aiguilles Rouges, 850 hPa (~1500 m) pour les points bas. Seuils de départ repris de Chaltén (40/60 km/h), à recaler sur des sorties réelles.</p></div>
+        <div><h3>Vent</h3><p>Le vent est lu au niveau de pression le plus proche du sommet : 600 hPa (~4200 m) pour le massif du Mont-Blanc, 700 hPa (~3000 m) pour les sommets des Aravis, des Bornes et des Aiguilles Rouges, 850 hPa (~1500 m) pour les points bas. Seuils calés sur ~2 600 sorties Camptocamp 2023–2026 : jusqu'à 60 km/h la fréquentation reste normale, elle baisse d'un tiers entre 60 et 80, puis s'effondre au-delà.</p></div>
         <div><h3>Orages</h3><p>En été, le principal danger : l'énergie disponible pour les orages (CAPE) l'après-midi (11h–19h). Au-delà de ~1000 J/kg, orages possibles en montagne ; au-delà de ~2000, orages probables et violents. Partir tôt et viser le sommet le matin.</p></div>
         <div><h3>Iso 0° et regel</h3><p>Si l'isotherme 0° la nuit reste au-dessus de l'altitude de la course, pas de regel : neige et ponts de neige mous, chutes de pierres. Indiqué dans l'analyse du jour. Calculé pour chaque modèle à partir de ses températures en altitude (850 à 500 hPa).</p></div>
         <div><h3>Foehn et situations</h3><p>Écart de pression nord–sud des Alpes ≥ 4 hPa : flux de nord, nuages bloqués côté nord. ≤ −4 hPa : foehn du sud, vent fort de sud sur les sommets (Mont-Blanc coiffé), souvent sec côté Chamonix mais instable.</p></div>
@@ -361,12 +388,16 @@ const TZ="Europe/Paris";
 const DAY_H=[4,19]; // verdict hours
 const JOURS=["dim","lun","mar","mer","jeu","ven","sam"];
 const NS="http://www.w3.org/2000/svg";
-const DEF_TH={ok:40,max:60,cape:1000};
+// Calibrated on ~2 600 Camptocamp outings 2023–2026 (outing rate vs weather, per summit and month): see scripts/calibrate.py
+const DEF_TH={ok:60,max:80,cape:1500,rain1:1,rain2:5,cloud:60};
 const S={spot:"mont-blanc",model:"mf",data:null,fetched:null,th:Object.assign({},DEF_TH)};
 
 const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-Object.assign(S,store.get("alpes-prefs")||{});S.th=Object.assign({},DEF_TH,S.th);if(!MODELS[S.model])S.model="mf";
-const savePrefs=()=>store.set("alpes-prefs",{spot:S.spot,model:S.model,th:S.th});
+Object.assign(S,store.get("alpes-prefs")||{});
+// pv2: calibrated thresholds replace the starting ones copied from Chaltén (kept if the user had changed them)
+if(!(S.pv>=2)&&S.th&&S.th.ok===40&&S.th.max===60&&S.th.cape===1000)S.th={};S.pv=2;
+S.th=Object.assign({},DEF_TH,S.th);if(!MODELS[S.model])S.model="mf";
+const savePrefs=()=>store.set("alpes-prefs",{spot:S.spot,model:S.model,th:S.th,pv:S.pv});
 
 const $=id=>document.getElementById(id);
 function el(n,a,p){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
@@ -486,7 +517,7 @@ function hourVerdict(d,i){
   const w=d.w[i],p=d.precipitation[i],ca=d.cape[i];
   if(w==null)return null;
   const th=S.th;let v=w<=th.ok?0:w<=th.max?1:2;
-  if(p>=0.3)v=Math.max(v,2);else if(p>0.05)v=Math.max(v,1);
+  if(p>=0.6)v=Math.max(v,2);else if(p>=0.2)v=Math.max(v,1); // hourly rates matching ~1 and ~5 mm over the day
   const h=+S.data.time[i].slice(11,13);if(ca!=null&&h>=11&&h<=19)v=Math.max(v,ca>=2*th.cape?2:ca>=th.cape?1:0);
   return v;
 }
@@ -508,8 +539,8 @@ function days(m){
     const sat=ok.filter(i=>{const t=d.temperature_2m[i],td=d.dew_point_2m[i];return hr(i)>=8&&hr(i)<=18&&t!=null&&td!=null&&t-td<2}).length;
     const crit={
       wind:w<=th.ok?0:w<=th.max?1:2,
-      rain:pr>=1?2:pr>=0.2?1:0,
-      cloud:cm>=80?1:0,
+      rain:pr>=th.rain2?2:pr>=th.rain1?1:0,
+      cloud:cm>=th.cloud?1:0,
       storm:cape==null?0:cape>=2*th.cape?2:cape>=th.cape?1:0,
     };
     out.push({k,m,start:idx[k][0],w,vg,cape,izMax,izNight,pm,pr,sat,dp:(p1??0)-(p0??0),cm,crit,v:Math.max(...Object.values(crit)),alt:sp.alt});
@@ -605,6 +636,7 @@ function hover(svg,H,top,bot){
 function showAt(i,cx,cy){
   const x=xs();cursorLines=cursorLines.filter(l=>l.isConnected);cursorLines.forEach(l=>{l.setAttribute("x1",x(i));l.setAttribute("x2",x(i));l.setAttribute("opacity",.45)});
   if(S.syn&&i!==S.synI)drawSyn(i);
+  if(v3On()&&i!==S.v3i){S.v3i=i;v3Update()}
   const D=S.data,d=D.m[S.model],T=D.time[i],dt=new Date(T.slice(0,10)+"T12:00:00Z");
   const card=v=>v==null?"":["N","NE","E","SE","S","SO","O","NO"][Math.round(v/45)%8];const f=v=>v==null?"–":Math.round(v);const f1=v=>v==null?"–":(Math.round(v*10)/10);
   const sp=(d.temperature_2m[i]!=null&&d.dew_point_2m[i]!=null)?f1(d.temperature_2m[i]-d.dew_point_2m[i]):"–";
@@ -636,7 +668,9 @@ function drawDays(){
     b.setAttribute("aria-pressed",S.sel===k?"true":"false");
     const cov=ds.length===1?`<small class="cov" title="Seul ce modèle va aussi loin">${LBL_M(ds[0].m)} seul</small>`:"";
     b.innerHTML=`<b>${JOURS[dt.getUTCDay()]} ${dt.getUTCDate()}/${dt.getUTCMonth()+1}</b><span class="v">${LBL[v]}</span><small class="why">${why}</small>${fh?`<small class="hum" title="Air saturé (T–Td &lt; 2°) au sommet entre 8h et 18h : nuages ou brume. Ne change pas le verdict.">humide ${fh} h</small>`:""}${cov}`;
-    b.onclick=()=>{S.sel=k;S.synI=(by[k][worst.m].start||0)+12;render()};
+    b.onclick=()=>{S.sel=k;S.synI=(by[k][worst.m].start||0)+12;
+      if(S.data){const i=v3Index(),hr=i>=0?+S.data.time[i].slice(11,13):14,j=S.data.time.findIndex(t=>t.slice(0,10)===k&&+t.slice(11,13)===hr);if(j>=0)S.v3i=j}
+      render()};
     box.appendChild(b);
   });
   drawWhy(S.sel,by[S.sel]);
@@ -663,8 +697,8 @@ function drawWhy(k,set){
   <p>${txt}</p>${warn.length?`<p class="warn">⚠ ${warn.join(" ")}</p>`:""}
   <table><thead><tr><th></th>${MK.map(m=>`<th title="${MODELS[m].long}">${LBL_M(m)}</th>`).join("")}<th class="rule">Règle</th></tr></thead><tbody>
   ${row(`Vent max ${sp.lvl} hPa (${LVL_ALT[sp.lvl]})`,"wind",d=>f(d.w)+" km/h",`bon ≤ ${th.ok}, non &gt; ${th.max}`)}
-  ${row("Pluie / neige","rain",d=>f1(d.pr)+" mm","limite ≥ 0,2, non ≥ 1")}
-  ${row("Nuages moyens","cloud",d=>f(d.cm)+" %","≥ 80 % = couvert")}
+  ${row("Pluie / neige","rain",d=>f1(d.pr)+" mm",`limite ≥ ${th.rain1}, non ≥ ${th.rain2}`)}
+  ${row("Nuages moyens","cloud",d=>f(d.cm)+" %",`limite ≥ ${th.cloud} %`)}
   ${row("Orage (CAPE 11h–19h)","storm",d=>d.cape==null?"–":f(d.cape),`limite ≥ ${th.cape}, non ≥ ${2*th.cape} J/kg`)}
   <tr class="info"><th colspan="${MK.length+2}">Pour info (hors verdict)</th></tr>
   ${row("Humidité (air saturé)","fog",d=>d.sat+" h","T–Td &lt; 2° au sommet, 8h–18h : dans les nuages")}
@@ -692,7 +726,7 @@ function render(suffix){
   const [o1,o2]=others();$("leg-o1").textContent=LBL_M(o1);$("leg-o2").textContent=LBL_M(o2);
   $("leg-vg").textContent=`Rafales en vallée (${valley().name})`;
   document.querySelectorAll(".th-ok").forEach(e=>e.textContent=S.th.ok);document.querySelectorAll(".th-max").forEach(e=>e.textContent=S.th.max);
-  drawDays();drawWind();drawHum();drawSky();drawLinks();drawSyn();
+  drawDays();drawWind();drawHum();drawSky();drawLinks();drawSyn();v3Update();
 }
 
 // ---------- controls ----------
@@ -707,6 +741,36 @@ const PHONE=matchMedia("(max-width:599px)").matches;
 document.querySelectorAll("details.fold").forEach(d=>{d.open=!PHONE;d.addEventListener("toggle",()=>{if(d.open)render()})});
 document.addEventListener("pointerdown",e=>{if(!e.target.closest("svg"))$("tip").style.display="none"});
 $("syn-t").oninput=e=>drawSyn(+e.target.value);
+// ---------- 3D view of the Mont-Blanc massif (Chamonix points only): follows the selected day, the hour slider and the chart cursor ----------
+let V3=null,v3Loading=false,v3Play=0;
+const v3On=()=>spot().region==="chamonix";
+function v3Index(){const D=S.data;if(!D)return -1;
+  if(S.v3i==null){ // current hour; at night, 14h today so the first view is lit
+    const now=nowLocal(),h=now.getHours();
+    S.v3i=Math.max(0,D.time.findIndex(t=>new Date(t+":00")>now)-1);
+    if(h<7||h>20){const k=D.time[S.v3i].slice(0,10),j=D.time.findIndex(t=>t.slice(0,10)===k&&+t.slice(11,13)===14);if(j>=0)S.v3i=j}}
+  return Math.max(0,Math.min(D.time.length-1,S.v3i))}
+function v3Update(){
+  $("v3").hidden=!v3On();if(!v3On())return;
+  if(!V3&&!v3Loading)v3Load();
+  const D=S.data;if(!D)return;const i=v3Index(),T=D.time[i],d=D.m[S.model],e=D.m.ecmwf;
+  const g=v=>d[v][i]??e[v][i];const hr=+T.slice(11,13),dt=new Date(T.slice(0,10)+"T12:00:00Z");
+  $("v3-h").value=hr;$("v3-hl").textContent=hr+"h";$("v3-when").textContent=`${JOURS[dt.getUTCDay()]} ${dt.getUTCDate()}/${dt.getUTCMonth()+1} · ${hr}h · ${LBL_M(d.w[i]!=null?S.model:"ecmwf")}`;
+  if(!V3)return;
+  const r=V3.show({time:T,w700:g("w"),dir700:g("dir"),low:g("cloud_cover_low"),mid:g("cloud_cover_mid"),high:g("cloud_cover_high"),precip:g("precipitation"),iso:g("iz")});
+  const f=v=>v==null?"–":Math.round(v),card=v=>v==null?"":["N","NE","E","SE","S","SO","O","NO"][Math.round(v/45)%8];
+  const hud=$("v3-hud");hud.style.display="block";
+  hud.innerHTML=`Vent ${spot().lvl} hPa ${f(g("w"))} km/h ${card(g("dir"))}<br>Nuages bas/moy/hauts ${f(g("cloud_cover_low"))}/${f(g("cloud_cover_mid"))}/${f(g("cloud_cover_high"))} %<br>Précip ${Math.round((g("precipitation")||0)*10)/10} mm/h · iso 0° ${f(g("iz"))} m<br>Soleil ${r.sunAlt>0?Math.round(r.sunAlt)+"° au-dessus de l'horizon":"couché"}`;
+}
+async function v3Load(){
+  if(V3||v3Loading)return;v3Loading=true;
+  try{const m=await import("./vue3d.js");V3=await m.mount($("v3-box"));$("v3-msg").remove();v3Update()}
+  catch(e){$("v3-msg").textContent="Vue 3D indisponible sur cet appareil ("+(e&&e.message||e)+").";v3Loading=false}
+}
+$("v3-h").oninput=e=>{const D=S.data;if(!D)return;const i=v3Index(),k=D.time[i].slice(0,10);
+  const j=D.time.findIndex(t=>t.slice(0,10)===k&&+t.slice(11,13)===+e.target.value);if(j>=0){S.v3i=j;v3Update()}};
+$("v3-play").onclick=()=>{if(v3Play){clearInterval(v3Play);v3Play=0;$("v3-play").textContent="▶";return}
+  $("v3-play").textContent="❚❚";v3Play=setInterval(()=>{if(!S.data)return;S.v3i=(v3Index()+1)%S.data.time.length;v3Update()},700)};
 // ---------- tabs: Prévisions / Historique (module loaded on first open) ----------
 let H=null,histo=false;
 function setTab(on){
@@ -717,7 +781,7 @@ function setTab(on){
   if(!on)render();
 }
 $("t-prev").onclick=()=>setTab(false);$("t-histo").onclick=()=>setTab(true);
-[["t-ok","ok"],["t-max","max"],["t-cape","cape"]].forEach(([id,k])=>{$(id).value=S.th[k];$(id).onchange=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.th[k]=v;savePrefs();render();if(H)H.then(h=>h&&h.refresh())}}});
+[["t-ok","ok"],["t-max","max"],["t-cape","cape"],["t-rain1","rain1"],["t-rain2","rain2"],["t-cloud","cloud"]].forEach(([id,k])=>{$(id).value=S.th[k];$(id).onchange=e=>{const v=parseFloat(e.target.value);if(!isNaN(v)){S.th[k]=v;savePrefs();render();if(H)H.then(h=>h&&h.refresh())}}});
 let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>render(),150)});
 load();loadSyn();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});

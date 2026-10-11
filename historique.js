@@ -79,7 +79,7 @@ export async function mount(el, ctx) {
   function verdict(k) {
     const d = days[k]; if (!d) return null;
     const th = ctx.th();
-    const one = s => Math.max(s.w <= th.ok ? 0 : s.w <= th.max ? 1 : 2, s.pr >= 1 ? 2 : s.pr >= 0.2 ? 1 : 0, s.cm >= 80 ? 1 : 0,
+    const one = s => Math.max(s.w <= th.ok ? 0 : s.w <= th.max ? 1 : 2, s.pr >= th.rain2 ? 2 : s.pr >= th.rain1 ? 1 : 0, s.cm >= th.cloud ? 1 : 0,
       s.cape == null ? 0 : s.cape >= 2 * th.cape ? 2 : s.cape >= th.cape ? 1 : 0);
     const ms = ctx.models.filter(m => d[m]);
     return ms.length ? {v: Math.max(...ms.map(m => one(d[m]))), n: ms.length} : null;

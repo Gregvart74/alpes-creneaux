@@ -257,6 +257,32 @@ export async function mount(el, ctx) {
   const outHtml = o => `<li><span class="h-ev ${o.cond == null ? "" : COND_CLS[o.cond]}">${o.cond == null ? "conditions non notées" : "conditions " + COND_FR[o.cond]}</span> <a href="https://www.camptocamp.org/outings/${o.id}" target="_blank" rel="noopener">${esc(o.title) || "Sortie"} ↗</a>
     <small>${acts(o.act)}${o.alt ? ` · ${o.alt} m` : ""}${o.end && o.end !== o.date ? ` · jusqu'au ${fmtDay(o.end)}` : ""}${o.author ? ` · ${esc(o.author)}` : ""}</small></li>`;
 
+  // ---------- key figures as tiles: value across models (worst case) with the models' range ----------
+  const tile = (lbl, val, sub, c = "") => `<div class="h-tile ${c}"><small>${lbl}</small><b>${val}</b><span>${sub || ""}</span></div>`;
+  const range = (vals, unit = "", dec = 0) => { const v = vals.filter(x => x != null); if (!v.length) return null; const f = x => dec ? (Math.round(x * 10) / 10).toString().replace(".", ",") : Math.round(x);
+    const lo = Math.min(...v), hi = Math.max(...v); return (f(lo) === f(hi) ? f(hi) : `${f(lo)}–${f(hi)}`) + unit; };
+  function dayTiles(k) {
+    const d = days[k]; if (!d) return "";
+    const th = ctx.th(), ms = ctx.models.filter(m => d[m]).map(m => d[m]), g = f => ms.map(s => s[f]), mx = f => { const v = g(f).filter(x => x != null); return v.length ? Math.max(...v) : null; }, mn = f => { const v = g(f).filter(x => x != null); return v.length ? Math.min(...v) : null; };
+    const w = mx("w"), pr = mx("pr"), cape = mx("cape"), cm = mx("cm"), izn = mn("izn"), izd = mx("izd"), sat = mx("sat"), hi = !ctx.isValley(sp);
+    const t = [];
+    t.push(tile(`Vent sommet (${sp.lvl} hPa)`, w == null ? "–" : `${r0(w)} km/h`, range(g("w"), " km/h") + " selon les modèles", w == null ? "" : w <= th.ok ? "go" : w <= th.max ? "warn" : "no"));
+    t.push(tile("Précipitations", pr == null ? "–" : `${(Math.round(pr * 10) / 10).toString().replace(".", ",")} mm`, pr >= th.rain1 && izd != null && hi ? (izd < sp.alt ? "en neige au sommet" : "en pluie au sommet") : "sur la journée 4h–19h", pr == null ? "" : pr >= th.rain2 ? "no" : pr >= th.rain1 ? "warn" : "go"));
+    t.push(tile("Orage (CAPE)", cape == null ? "–" : `${r0(cape)} J/kg`, cape == null ? "pas de donnée" : cape >= 2 * th.cape ? "orages probables l'après-midi" : cape >= th.cape ? "orages possibles l'après-midi" : "pas d'orage marqué", cape == null ? "" : cape >= 2 * th.cape ? "no" : cape >= th.cape ? "warn" : "go"));
+    t.push(tile("Nuages moyens", cm == null ? "–" : `${r0(cm)} %`, sat ? `sommet dans les nuages ${sat} h` : "ciel dégagé en altitude", cm == null ? "" : cm >= th.cloud || sat >= 3 ? "warn" : "go"));
+    if (hi) { const nr = izn != null && izn > sp.alt; t.push(tile("0 °C la nuit", izn == null ? "–" : `${r0(izn)} m`, izn == null ? "" : nr ? "au-dessus du sommet : pas de regel" : izn > sp.alt - 300 ? "proche du sommet : regel faible" : "sous le sommet : regel", izn == null ? "" : nr ? "no" : izn > sp.alt - 300 ? "warn" : "go")); }
+    t.push(tile("0 °C le jour", izd == null ? "–" : `${r0(izd)} m`, izd == null ? "" : hi && izd > sp.alt ? "il fait positif au sommet" : "il gèle au sommet"));
+    return `<div class="h-tiles">${t.join("")}</div>`;
+  }
+  function beforeTiles(b) {
+    const f = b.f, hi = !ctx.isValley(sp), t = [];
+    if (hi) t.push(tile("Neige fraîche au sommet", `${r0(f.sn3)} cm`, `sur 3 jours, ${r0(f.sn7)} cm sur 7 jours`, f.sn3 >= 15 || f.sn7 >= 30 ? "warn" : f.sn7 >= 5 ? "" : "go"));
+    t.push(tile("Jours secs d'affilée", `${f.dry}`, f.dry >= 5 ? "rocher sec, traces faites" : f.dry >= 2 ? "séchage en cours" : "précipitations récentes", f.dry >= 5 ? "go" : f.dry >= 2 ? "" : "warn"));
+    if (hi) t.push(tile("Nuits sans regel", `${f.noRegel} / 3`, f.noRegel === 0 ? "regel chaque nuit" : f.noRegel >= 2 ? "neige pourrie, ponts fragiles" : "une nuit douce", f.noRegel >= 2 ? "warn" : f.noRegel ? "" : "go"));
+    t.push(tile("Vent max 3 jours", `${r0(f.w3)} km/h`, f.w3 >= 70 ? "neige soufflée, plaques" : "pas de transport notable", f.w3 >= 70 ? "warn" : "go"));
+    return `<div class="h-tiles">${t.join("")}</div>`;
+  }
+
   // Routes grouped by activity, best first
   function coursesHtml(k, sg) {
     if (!sg) return `<p class="h-read">Pas assez de recul météo pour comparer ce jour à des situations passées.</p>`;
@@ -266,12 +292,16 @@ export async function mount(el, ctx) {
     // activities in the order of their best route (lists are already sorted), fixed order only to break ties
     const order = Object.keys(groups).sort((a, b) => groups[b][0].score - groups[a][0].score || (ACT_ORDER.indexOf(a) + 1 || 99) - (ACT_ORDER.indexOf(b) + 1 || 99));
     const top = sg.list[0].score;
-    const row = r => { const ref = r.lastGood || r.last, bar = Math.max(8, Math.round(100 * r.score / top));
-      const tag = r.rated ? `${r.good}/${r.rated} sortie${r.rated > 1 ? "s" : ""} en bonnes conditions` : `${r.n} sortie${r.n > 1 ? "s" : ""}, conditions non notées`;
-      return `<li class="h-course"><i class="h-bar" style="width:${bar}%"></i><a href="https://www.camptocamp.org/outings/${ref.id}" target="_blank" rel="noopener">${esc(r.title)} ↗</a>
-        <small><span class="h-ev ${r.rated ? (r.good / r.rated >= 0.6 ? "go" : "warn") : ""}">${tag}</span>${r.alt ? ` · ${r.alt} m` : ""} · dernière fois le ${fmtDay(ref.date)}${ref.cond != null ? ` (${COND_FR[ref.cond]})` : ""}</small></li>`; };
-    return order.map(a => `<h4 class="h-act">${ACT_FR[a] || a}</h4><ul class="h-courses">${groups[a].slice(0, 12).map(row).join("")}</ul>`).join("") +
-      `<p class="h-small">Classement : chaque sortie d'une journée comparable vote pour sa course, d'autant plus que la situation est proche et que les conditions rapportées étaient bonnes. ${sg.an.length} journées comparables, ${sg.nOut} sorties. Ce sont des indices tirés de ce que d'autres ont trouvé : à recouper avec les derniers comptes rendus et le bulletin d'avalanches.</p>`;
+    const conf = r => r.rated >= 3 && r.good / r.rated >= 0.75 ? [3, "solide"] : r.rated >= 2 && r.good / r.rated >= 0.5 ? [2, "probable"] : [1, "un seul retour"];
+    const row = r => { const ref = r.lastGood || r.last, bar = Math.max(8, Math.round(100 * r.score / top)), [cn, ct] = conf(r);
+      const tag = r.rated ? `${r.good} bonne${r.good > 1 ? "s" : ""} sur ${r.rated} sortie${r.rated > 1 ? "s" : ""} notée${r.rated > 1 ? "s" : ""}` : `${r.n} sortie${r.n > 1 ? "s" : ""} sans note de conditions`;
+      return `<li class="h-course"><i class="h-bar" style="width:${bar}%"></i><div class="h-course-l"><a href="https://www.camptocamp.org/outings/${ref.id}" target="_blank" rel="noopener">${esc(r.title)} ↗</a>
+        <small>${tag}${r.alt ? ` · ${r.alt} m` : ""} · vu le ${fmtDay(ref.date)}${ref.cond != null ? ` en conditions ${COND_FR[ref.cond]}` : ""}</small></div>
+        <span class="h-conf c${cn}" title="Indice de confiance : ${ct}"><i></i><i></i><i></i><small>${ct}</small></span></li>`; };
+    const nGood = sg.list.filter(r => r.good).length;
+    return `<p class="h-read">D'après <b>${sg.nOut} sorties</b> faites dans <b>${sg.an.length} situations comparables</b> (même saison, jours d'avant semblables), <b>${nGood} course${nGood > 1 ? "s" : ""}</b> ${nGood > 1 ? "ont été trouvées" : "a été trouvée"} en bonnes conditions.</p>` +
+      order.map(a => `<h4 class="h-act">${ACT_FR[a] || a} <span>${groups[a].length}</span></h4><ul class="h-courses">${groups[a].slice(0, 12).map(row).join("")}</ul>`).join("") +
+      `<p class="h-small">Ordre : chaque sortie d'une journée comparable vote pour sa course, plus fort si la situation est proche et si les conditions rapportées étaient bonnes. Confiance : solide = au moins 3 retours, ¾ bons ; probable = au moins 2 retours, moitié bons ; un seul retour sinon. Ce sont des indices tirés de ce que d'autres ont vécu : à recouper avec les derniers comptes rendus et le bulletin d'avalanches.</p>`;
   }
   function analogHtml(an) {
     return `<div class="h-an">${an.map(a => { const os = byDay[a.d] || []; const cs = os.filter(o => o.cond != null), best = cs.length ? Math.min(...cs.map(o => o.cond)) : null;
@@ -285,18 +315,21 @@ export async function mount(el, ctx) {
     let body;
     if (fut) {
       const sg = suggest(k);
-      body = `<h3>Situation</h3>${b ? b.read.map(x => `<p class="h-read ${x.c}">${x.t}</p>`).join("") : "<p class='h-read'>Pas assez de données sur les jours d'avant.</p>"}
+      body = `<h3>Météo du jour</h3>${dayTiles(k) || "<p class='h-read'>Pas de données météo.</p>"}
+        <h3>Les jours d'avant</h3>${b ? beforeTiles(b) + `<ul class="h-reads">${b.read.map(x => `<li class="h-read ${x.c}">${x.t}</li>`).join("")}</ul>` : "<p class='h-read'>Pas assez de données sur les jours d'avant.</p>"}
         ${v && v.v === 2 ? `<p class="h-read no">Verdict « Non » ce jour-là : les courses ci-dessous sont celles qui seraient en condition si la météo s'améliorait.</p>` : ""}
         <h3>Courses qui pourraient être en condition</h3>${coursesHtml(k, sg)}
         ${sg && sg.an.length ? `<details class="fold h-more"><summary><h3>Les ${sg.an.length} journées comparables</h3></summary>${analogHtml(sg.an)}<p class="h-small">Même saison (± ${SEASON_WINDOW} jours), comparées sur la neige au sommet des 7 et 3 derniers jours, le vent et le regel des 3 derniers jours, les jours secs et l'altitude du 0 °C. Cliquez une journée pour la revoir.</p></details>` : ""}
-        <details class="fold h-more"><summary><h3>Les 7 jours d'avant en chiffres</h3></summary>${b ? beforeHtml(b) : "<p class='h-read'>Pas assez de données.</p>"}</details>`;
+        <details class="fold h-more"><summary><h3>Les 7 jours d'avant en chiffres</h3></summary>${b ? beforeHtml(b) : "<p class='h-read'>Pas assez de données.</p>"}</details>
+        <details class="fold h-more"><summary><h3>Détail par modèle</h3></summary><p class="h-metrics">${ctx.models.map(line).filter(Boolean).join("<br>")}</p></details>`;
     } else {
-      body = `<h3>Les 7 jours d'avant</h3>${b ? beforeHtml(b) + b.read.map(x => `<p class="h-read ${x.c}">${x.t}</p>`).join("") : "<p class='h-read'>Pas assez de données.</p>"}
+      body = `<h3>Météo du jour</h3>${dayTiles(k) || "<p class='h-read'>Pas de données météo ce jour-là.</p>"}<p class="h-metrics">${ctx.models.map(line).filter(Boolean).join("<br>")}</p>
+        <h3>Les 7 jours d'avant</h3>${b ? beforeHtml(b) + b.read.map(x => `<p class="h-read ${x.c}">${x.t}</p>`).join("") : "<p class='h-read'>Pas assez de données.</p>"}
         <h3>Sorties Camptocamp ce jour-là</h3>${os.length ? `<ul class="h-evs">${os.map(outHtml).join("")}</ul>` : `<p class="h-read">Aucune sortie enregistrée ce jour-là autour du point.</p>`}`;
     }
     el.querySelector("#h-day").innerHTML = `
-      <div class="h-head"><h2 class="h-title">${fut ? "Si je pars " : ""}${fmtDay(k)}</h2>${v ? `<span class="h-badge ${CLS[v.v]}">${fc ? "Prévu" : "Verdict"} : ${LBL[v.v]}${v.n === 1 ? " (1 modèle)" : ""}</span>` : ""}</div>
-      <p class="h-metrics">${ctx.models.map(line).filter(Boolean).join("<br>") || "Pas de données météo ce jour-là."}</p>${body}`;
+      <div class="h-head"><h2 class="h-title">${fut ? "Si je pars " : ""}${fmtDay(k)} <small>${sp.name}, ${sp.alt} m</small></h2>${v ? `<span class="h-badge ${CLS[v.v]}">${fc ? "Prévu" : "Verdict"} : ${LBL[v.v]}${v.n === 1 ? " (1 modèle)" : ""}</span>` : ""}</div>
+      ${fut ? `<p class="h-read h-lead">${v ? (v.v === 0 ? "Journée praticable : " : v.v === 1 ? "Journée limite : " : "Journée à éviter : ") + reason(k) : "Pas de verdict"}${v && v.n < ctx.models.length ? ` (${v.n} modèle${v.n > 1 ? "s" : ""} sur ${ctx.models.length})` : ""}.</p>` : ""}${body}`;
     el.querySelector("#h-day").querySelectorAll("button[data-k]").forEach(x => x.onclick = () => go(x.dataset.k, true));
   }
 
